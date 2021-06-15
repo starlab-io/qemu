@@ -594,10 +594,11 @@ static bool net_tx_pkt_do_sw_fragmentation(struct NetTxPkt *pkt,
 
         more_frags = (fragment_offset + fragment_len < pkt->payload_len);
 
-        eth_setup_ip4_fragmentation(l2_iov_base, l2_iov_len, l3_iov_base,
-            l3_iov_len, fragment_len, fragment_offset, more_frags);
+        eth_setup_ip_fragmentation(l2_iov_base, l2_iov_len, l3_iov_base,
+            &l3_iov_len, ETH_MAX_IP_DGRAM_LEN,
+			fragment_len, fragment_offset, more_frags);
 
-        eth_fix_ip4_checksum(l3_iov_base, l3_iov_len);
+        fragment[NET_TX_PKT_FRAGMENT_L3_HDR_POS].iov_len = l3_iov_len;
 
         net_tx_pkt_sendv(pkt, nc, fragment, dst_idx);
 
