@@ -676,10 +676,28 @@ static bool migrate_is_not_pcie(void *opaque, int version_id)
     return !pci_is_express((PCIDevice *)opaque);
 }
 
+static int pci_post_load(void *opaque, int version_id)
+{
+    PCIDevice *dev = opaque;
+
+	/* If device is SR-IOV capable, trigger callbacks associated 
+     * with SR-IOV by rewriting. This supports loading snaphots with VF devices
+     */
+	if ( pci_is_express(dev) && dev->exp.sriov_cap) {
+		const uint32_t num_vfs = dev->config_read(dev,  dev->exp.sriov_cap + PCI_SRIOV_NUM_VF, 4);
+		const uint32_t ctrl    = dev->config_read(dev,  dev->exp.sriov_cap + PCI_SRIOV_CTRL, 4);
+		dev->config_write(dev,  dev->exp.sriov_cap + PCI_SRIOV_NUM_VF, num_vfs, 4);
+		dev->config_write(dev,  dev->exp.sriov_cap + PCI_SRIOV_CTRL, ctrl, 4);
+	}
+    return 0;
+}
+
+
 const VMStateDescription vmstate_pci_device = {
     .name = "PCIDevice",
     .version_id = 2,
     .minimum_version_id = 1,
+    .post_load = pci_post_load,
     .fields = (VMStateField[]) {
         VMSTATE_INT32_POSITIVE_LE(version_id, PCIDevice),
         VMSTATE_BUFFER_UNSAFE_INFO_TEST(config, PCIDevice,
