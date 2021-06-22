@@ -198,10 +198,15 @@ void net_rx_pkt_set_protocols(struct NetRxPkt *pkt, const void *data,
         .iov_base = (void *)data,
         .iov_len = len
     };
+    net_rx_pkt_set_protocols_iov(pkt, &iov, 1, data, len);
+}
 
+
+void net_rx_pkt_set_protocols_iov(struct NetRxPkt *pkt, const struct iovec *iov, int iovcnt, const void *data, size_t len)
+{
     assert(pkt);
 
-    eth_get_protocols(&iov, 1, &pkt->isip4, &pkt->isip6,
+    eth_get_protocols(iov, iovcnt, &pkt->isip4, &pkt->isip6,
                       &pkt->isudp, &pkt->istcp,
                       &pkt->l3hdr_off, &pkt->l4hdr_off, &pkt->l5hdr_off,
                       &pkt->ip6hdr_info, &pkt->ip4hdr_info, &pkt->l4hdr_info);

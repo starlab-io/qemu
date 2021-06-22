@@ -150,6 +150,25 @@ void net_tx_pkt_dump(struct NetTxPkt *pkt);
  */
 void net_tx_pkt_reset(struct NetTxPkt *pkt);
 
+
+/**
+ * typedef for net_tx_pkt_sendv_ex function callback
+ */
+typedef void (*net_tx_sendv_func)(struct NetTxPkt *pkt, NetClientState *nc, const struct iovec *iov, int iov_cnt, void *param);
+
+/**
+ * Send packet to qemu. handles sw offloads if vhdr is not supported.
+ *
+ * @pkt:            packet
+ * @nc:             NetClientState
+ * @sendv_func:     Callback function to do the actual send
+ * @param:          Parameter for callback function
+ * @ret:            operation result
+ *
+ */
+bool net_tx_pkt_send_ex(struct NetTxPkt *pkt, NetClientState *nc, net_tx_sendv_func sendv_func, void *param);
+
+
 /**
  * Send packet to qemu. handles sw offloads if vhdr is not supported.
  *

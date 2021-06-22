@@ -551,8 +551,9 @@ static size_t net_tx_pkt_fetch_fragment(struct NetTxPkt *pkt,
     return fetched;
 }
 
+
 static inline void net_tx_pkt_sendv(struct NetTxPkt *pkt,
-    NetClientState *nc, const struct iovec *iov, int iov_cnt)
+                                    NetClientState *nc, const struct iovec *iov, int iov_cnt, void *param)
 {
     if (pkt->is_loopback) {
         qemu_receive_packet_iov(nc, iov, iov_cnt);
@@ -562,7 +563,9 @@ static inline void net_tx_pkt_sendv(struct NetTxPkt *pkt,
 }
 
 static bool net_tx_pkt_do_sw_fragmentation(struct NetTxPkt *pkt,
-    NetClientState *nc)
+                                           NetClientState *nc,
+                                           net_tx_sendv_func sendv_func,
+                                           void *sendv_param)
 {
     struct iovec fragment[NET_MAX_FRAG_SG_LIST];
     size_t fragment_len = 0;
@@ -600,7 +603,7 @@ static bool net_tx_pkt_do_sw_fragmentation(struct NetTxPkt *pkt,
 
         fragment[NET_TX_PKT_FRAGMENT_L3_HDR_POS].iov_len = l3_iov_len;
 
-        net_tx_pkt_sendv(pkt, nc, fragment, dst_idx);
+        sendv_func(pkt, nc, fragment, dst_idx, sendv_param);
 
         fragment_offset += fragment_len;
 
@@ -609,7 +612,7 @@ static bool net_tx_pkt_do_sw_fragmentation(struct NetTxPkt *pkt,
     return true;
 }
 
-bool net_tx_pkt_send(struct NetTxPkt *pkt, NetClientState *nc)
+bool net_tx_pkt_send_ex(struct NetTxPkt *pkt, NetClientState *nc, net_tx_sendv_func sendv_func, void *param)
 {
     assert(pkt);
 
@@ -633,12 +636,18 @@ bool net_tx_pkt_send(struct NetTxPkt *pkt, NetClientState *nc)
     if (pkt->has_virt_hdr ||
         pkt->virt_hdr.gso_type == VIRTIO_NET_HDR_GSO_NONE) {
         net_tx_pkt_fix_ip6_payload_len(pkt);
-        net_tx_pkt_sendv(pkt, nc, pkt->vec,
-            pkt->payload_frags + NET_TX_PKT_PL_START_FRAG);
+        sendv_func(pkt, nc, pkt->vec,
+                   pkt->payload_frags + NET_TX_PKT_PL_START_FRAG, param);
         return true;
     }
 
-    return net_tx_pkt_do_sw_fragmentation(pkt, nc);
+    return net_tx_pkt_do_sw_fragmentation(pkt, nc, sendv_func, param);
+}
+
+
+bool net_tx_pkt_send(struct NetTxPkt *pkt, NetClientState *nc)
+{
+    return net_tx_pkt_send_ex(pkt, nc, net_tx_pkt_sendv, NULL);
 }
 
 bool net_tx_pkt_send_loopback(struct NetTxPkt *pkt, NetClientState *nc)
