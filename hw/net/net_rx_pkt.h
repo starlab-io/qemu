@@ -63,6 +63,9 @@ size_t net_rx_pkt_get_total_len(struct NetRxPkt *pkt);
 void net_rx_pkt_set_protocols(struct NetRxPkt *pkt, const void *data,
                               size_t len);
 
+
+void net_rx_pkt_set_protocols_iov(struct NetRxPkt *pkt, const struct iovec *iov, int iovcnt, const void *data, size_t len);
+
 /**
  * fetches packet analysis results
  *

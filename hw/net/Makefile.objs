@@ -10,7 +10,11 @@ common-obj-$(CONFIG_PCNET_COMMON) += pcnet.o
 common-obj-$(CONFIG_E1000_PCI) += e1000.o e1000x_common.o
 common-obj-$(CONFIG_E1000E_PCI_EXPRESS) += net_tx_pkt.o net_rx_pkt.o
 common-obj-$(CONFIG_E1000E_PCI_EXPRESS) += e1000e.o e1000e_core.o e1000x_common.o
-common-obj-$(CONFIG_IGB_PCI_EXPRESS) += igb.o e1000e_core.o e1000x_common.o
+
+common-obj-$(CONFIG_IGB_PCI_EXPRESS) += net_tx_pkt.o net_rx_pkt.o igb.o igb_common.o igb_ring.o
+common-obj-$(CONFIG_IGB_PCI_EXPRESS) += igb_pf_core.o igb_pf_interrupt.o igb_pf_txrx.o igb_pf_phy.o
+common-obj-$(CONFIG_IGB_PCI_EXPRESS) += igb_vf_core.o igb_vf_interrupt.o igb_vf_txrx.o igb_mailbox.o
+
 common-obj-$(CONFIG_RTL8139_PCI) += rtl8139.o
 common-obj-$(CONFIG_VMXNET3_PCI) += net_tx_pkt.o net_rx_pkt.o
 common-obj-$(CONFIG_VMXNET3_PCI) += vmxnet3.o
