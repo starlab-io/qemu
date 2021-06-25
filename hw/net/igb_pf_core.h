@@ -39,6 +39,7 @@
 #include "exec/hwaddr.h"
 #include "net/net.h"
 #include "igb_ring.h"
+#include "qemu/timer.h"
 
 #define IGB_PHY_PAGE_SIZE    (0x20)
 #define IGB_PHY_PAGES        (0x07)
@@ -69,6 +70,10 @@ struct IgbPfCore {
     bool has_vnet; //for external interface only
 
     uint8_t permanent_mac[6];
+
+	// Crude Interrupt Throttling
+	QEMUTimer *interrupt_timer;
+	uint32_t pending_interrupts;
 
     // ---------------------
     NICState *owner_nic;

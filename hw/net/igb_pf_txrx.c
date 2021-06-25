@@ -67,9 +67,8 @@ our_tx_pkt_sendv(struct NetTxPkt *pkt,
 static void
 igb_pf_tx_pkt_send(struct NetTxPkt *tx_pkt, void *_core)
 {
-    // In reality, there is only one queue...
     IgbPfCore *core = (IgbPfCore*)_core;
-    NetClientState *nc = qemu_get_subqueue(core->owner_nic, 0);
+    NetClientState *nc = qemu_get_queue(core->owner_nic);
     assert(tx_pkt != NULL);
 
     // Logic for doing loopback skipped (net_tx_pkt_send_loopback not called)
@@ -236,7 +235,7 @@ igb_pf_set_rdt(IgbPfCore *core, int index, uint32_t val)
 {
 
     core->mac[index] = val;
-    //TODO:  start RX here if can_receive doesn't always return true
+	igb_start_recv(core);
 }
 
 

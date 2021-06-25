@@ -63,6 +63,34 @@ igb_vf_get_txq_cause(IgbVfCore *core, unsigned txq)
 }
 
 /*
+ * Limit interrupts to 1 group per millisecond.
+ * This seems to avoid issues in 'user' mode networking
+ * (where 500ms latencies occur without any type of interrupt moderation.
+ * The e1000e emulation has the same problem when moderation is disabled.
+ *
+ * Rather than implement a fully realistic design similar to HW,
+ * this takes a shortcut...
+ */
+
+void igb_vf_interrupt_timer(void *opaque)
+{
+    IgbVfCore *core = opaque;
+
+    if (core->pending_interrupts) {
+
+        for(uint32_t intnum=0; intnum<32; ++intnum) {
+
+            if (BIT(intnum) & core->pending_interrupts) {
+                trace_igb_vf_interrupt_notify(igb_get_vf_num(core), intnum);
+                msix_notify(core->owner, intnum);
+                core->pending_interrupts &= ~BIT(intnum);
+            }
+        }
+        timer_mod(core->interrupt_timer, qemu_clock_get_ms(QEMU_CLOCK_VIRTUAL) + 1);
+    }
+}
+
+/*
  * Raise a single interrupt by number
  */
 static void
@@ -75,8 +103,10 @@ igb_vf_raise_single(IgbVfCore *core, uint32_t intnum)
     *eicr |= intvector;
 
     if (*eims & intvector) {
-        trace_igb_vf_interrupt_notify(igb_get_vf_num(core), intnum);
-        msix_notify(core->owner, intnum);
+        core->pending_interrupts |= BIT(intnum);
+        if (!timer_pending(core->interrupt_timer) ) {
+            igb_vf_interrupt_timer(core);
+        }
 
         // handle Extended Interrupt Acknowledge auto-mask
         if (igb_is_eiame_enabled(igb_get_pf_core(core))) {
@@ -91,8 +121,8 @@ igb_vf_raise_single(IgbVfCore *core, uint32_t intnum)
 static void
 igb_vf_raise_single_cause(IgbVfCore *core, uint32_t cause)
 {
-    const uint8_t ivar 		= igb_vf_get_ivar_byte(core, cause);
-    const uint8_t intnum	= ivar & IGB_IVAR_INT_ALLOC;
+    const uint8_t ivar      = igb_vf_get_ivar_byte(core, cause);
+    const uint8_t intnum    = ivar & IGB_IVAR_INT_ALLOC;
     const bool    intvalid  = ivar & IGB_IVAR_VALID;
 
     if (intvalid) {
@@ -171,6 +201,7 @@ igb_vf_set_eiac(IgbVfCore *core, int index, uint32_t val)
     val &= VF_INT_MASK;
     uint32_t *eiac = igb_vf_reg(core, IGB_VF_VTEIAC);
     *eiac = val;
+    //TODO: Handling of this during interrupt generation is not yet implemeted!
 }
 
 /* igb EIMS (Extended Interrupt Mask Set, spec p.352, 503)
