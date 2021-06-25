@@ -82,7 +82,7 @@ igb_vf_tx_pkt_send(struct NetTxPkt *tx_pkt, void *_core)
     assert(tx_pkt != NULL);
     IgbVfCore *vf_core = (IgbVfCore*)_core;
     IgbPfCore *pf_core = igb_get_pf_core(vf_core);
-    NetClientState *nc = qemu_get_subqueue(pf_core->owner_nic, 0);
+    NetClientState *nc = qemu_get_queue(pf_core->owner_nic);
     igb_send_context_t context = {
         .core = pf_core,
         .source = igb_get_vf_num(vf_core),
@@ -205,9 +205,7 @@ void
 igb_vf_set_rdt(IgbVfCore *core, int index, uint32_t val)
 {
     core->mac[index] = val;
-
-    //const unsigned qnum = IGB_LOOKUP_VALUE(index, array_RDT);
-    //TODO: start RX ?
+	igb_start_recv(igb_get_pf_core(core));
 }
 
 

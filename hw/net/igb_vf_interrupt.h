@@ -61,4 +61,6 @@ igb_vf_set_eims(IgbVfCore *core, int index, uint32_t val);
 void
 igb_vf_set_eics(IgbVfCore *core, int index, uint32_t val);
 
+void
+igb_vf_interrupt_timer(void *);
 #endif

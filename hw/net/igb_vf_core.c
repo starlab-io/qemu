@@ -313,6 +313,10 @@ igb_vf_core_pci_realize(IgbVfCore *core)
     net_rx_pkt_init(&core->rx_pkt, false /*vnet*/);
     igb_vf_core_prepare_tx(core);
     igb_vf_core_prepare_rx(core);
+
+	// Crude Interrupt Throttling:
+	core->interrupt_timer = timer_new_ms(QEMU_CLOCK_VIRTUAL, igb_vf_interrupt_timer, core);
+	core->pending_interrupts = 0;
 }
 
 void

@@ -34,6 +34,10 @@ struct IgbVfCore {
     Igb_RingInfo  txi[IGB_VF_NUM_QUEUES];
     Igb_RingInfo  rxi[IGB_VF_NUM_QUEUES];
 
+	// Crude Interrupt Throttling
+	QEMUTimer *interrupt_timer;
+	uint32_t pending_interrupts;
+
     struct NetRxPkt *rx_pkt;
 
     PCIDevice *owner;

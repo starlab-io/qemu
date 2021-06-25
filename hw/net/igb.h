@@ -59,5 +59,7 @@ typedef struct {
 void igb_broadcast_pkt(igb_send_context_t *context, const struct iovec *iov,
                        int iovcnt);
 
+void
+igb_start_recv(IgbPfCore *core);
 
 #endif

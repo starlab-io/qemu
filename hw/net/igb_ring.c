@@ -290,13 +290,13 @@ igb_xmit_ring(IgbTx *tx, const Igb_RingInfo *txi, PCIDevice *owner, igb_tx_func_
     while (!igb_ring_empty(txi)) {
         struct igb_tx_desc desc = {};
         dma_addr_t base = igb_ring_head_descr(txi);
-        do_interrupt = true;
 
         pci_dma_read(owner, base, &desc, sizeof(desc));
 
         bool wb;
         wb = igb_process_tx_desc(tx, &desc,  tx_func, tx_arg);
         if (wb) {
+            do_interrupt = true;
             igb_txdesc_writeback(owner, base, (struct igb_adv_tx_data_desc*)&desc,
                                  txi->idx);
         }

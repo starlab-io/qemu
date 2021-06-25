@@ -84,6 +84,33 @@ igb_pf_get_txq_cause(IgbPfCore *core, unsigned txq)
 }
 
 /*
+ * Limit interrupts to 1 group per millisecond.
+ * This seems to avoid issues in 'user' mode networking
+ * (where 500ms latencies occur without any type of interrupt moderation.
+ * The e1000e emulation has the same problem when moderation is disabled.
+ *
+ * Rather than implement a fully realistic design similar to HW,
+ * this takes a shortcut...
+ */
+void igb_pf_interrupt_timer(void *opaque)
+{
+    IgbPfCore *core = opaque;
+
+    if (core->pending_interrupts) {
+
+        for(uint32_t intnum=0; intnum<32; ++intnum) {
+
+            if (BIT(intnum) & core->pending_interrupts) {
+                trace_igb_pf_interrupt_notify(intnum);
+                msix_notify(core->owner, intnum);
+                core->pending_interrupts &= ~BIT(intnum);
+            }
+        }
+        timer_mod(core->interrupt_timer, qemu_clock_get_ms(QEMU_CLOCK_VIRTUAL) + 1);
+    }
+}
+
+/*
  * Raise a single interrupt by number
  */
 static void
@@ -93,8 +120,10 @@ igb_pf_raise_single(IgbPfCore *core, uint32_t intnum)
     core->mac[EICR] |= intvector;
 
     if (core->mac[EIMS] & intvector) {
-        trace_igb_pf_interrupt_notify(intnum);
-        msix_notify(core->owner, intnum);
+        core->pending_interrupts |= BIT(intnum);
+        if (!timer_pending(core->interrupt_timer) ) {
+            igb_pf_interrupt_timer(core);
+        }
 
         // handle Extended Interrupt Acknowledge auto-mask
         if (igb_is_eiame_enabled(core)) {
@@ -118,8 +147,8 @@ igb_is_eiame_enabled(IgbPfCore *core)
 static void
 igb_pf_raise_single_cause(IgbPfCore *core, uint32_t cause)
 {
-    const uint8_t ivar 		= igb_pf_get_ivar_byte(core, cause);
-    const uint8_t intnum	= ivar & IGB_IVAR_INT_ALLOC;
+    const uint8_t ivar      = igb_pf_get_ivar_byte(core, cause);
+    const uint8_t intnum    = ivar & IGB_IVAR_INT_ALLOC;
     const bool    intvalid  = ivar & IGB_IVAR_VALID;
 
     if (intvalid) {
@@ -233,6 +262,7 @@ void
 igb_pf_set_eiac(IgbPfCore *core, int index, uint32_t val)
 {
     core->mac[EIAC] = val;
+    //TODO: Handling of this during interrupt generation is not yet implemeted!
 }
 
 /* igb EIMS (Extended Interrupt Mask Set)

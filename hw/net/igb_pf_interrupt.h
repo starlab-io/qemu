@@ -80,4 +80,7 @@ void
 igb_pf_set_eics(IgbPfCore *core, int index, uint32_t val);
 
 
+void
+igb_pf_interrupt_timer(void *opaque);
+
 #endif

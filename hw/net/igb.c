@@ -107,7 +107,7 @@ typedef struct IgbVfState {
 /*
  * NOTE: this isn't really used much since can_receive always returns true
  */
-static void
+void
 igb_start_recv(IgbPfCore *core)
 {
     for (int i = 0; i < core->owner_nic->conf->peers.queues; i++) {
@@ -317,8 +317,7 @@ void igb_broadcast_pkt(igb_send_context_t *context, const struct iovec *iov,
 
     /* Send to outside world: */
     if (source != IGB_SOURCE_QEMU) {
-        /*In reality, there is only one queue... */
-        NetClientState *nc = qemu_get_subqueue(pf_core->owner_nic, 0);
+        NetClientState *nc = qemu_get_queue(pf_core->owner_nic);
 
         struct iovec iov2[iovcnt + 1];
         const int iov2cnt = iovcnt + 1;
@@ -705,7 +704,7 @@ static void pci_igb_vf_uninit(PCIDevice *d)
     msix_uninit(d, mr, mr);
 }
 
-#define IGB_VMSTATE_VER 1
+#define IGB_VMSTATE_VER 2
 
 static const VMStateDescription igb_vmstate_tx_props = {
     .name = "igb-tx-props",
@@ -766,6 +765,9 @@ static const VMStateDescription igb_pf_vmstate_core = {
 
         VMSTATE_BOOL(has_vnet, IgbPfCore),
         VMSTATE_UINT8_ARRAY(permanent_mac, IgbPfCore, ETH_ALEN),
+		VMSTATE_TIMER_PTR(interrupt_timer, IgbPfCore),
+		VMSTATE_UINT32(pending_interrupts, IgbPfCore),
+
         VMSTATE_END_OF_LIST()
     }
 };
@@ -798,6 +800,8 @@ static const VMStateDescription igb_vf_vmstate_core = {
         VMSTATE_UINT32_ARRAY(mac, IgbVfCore, IGB_VF_MAC_SIZE),
         VMSTATE_STRUCT_ARRAY(tx, IgbVfCore, IGB_VF_NUM_QUEUES, IGB_VMSTATE_VER, igb_vmstate_tx, IgbTx),
         VMSTATE_STRUCT_ARRAY(rx, IgbVfCore, IGB_VF_NUM_QUEUES, IGB_VMSTATE_VER, igb_vmstate_rx, IgbRx),
+		VMSTATE_TIMER_PTR(interrupt_timer, IgbVfCore),
+		VMSTATE_UINT32(pending_interrupts, IgbVfCore),
         VMSTATE_END_OF_LIST()
     }
 };
