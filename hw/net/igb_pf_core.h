@@ -106,4 +106,10 @@ igb_pf_can_receive(IgbPfCore *core);
 
 void
 igb_pf_core_set_link_status(IgbPfCore *core, bool link_down);
+
+bool
+igb_pf_promisc(IgbPfCore *core);
+
+void
+igb_pf_mac_check(IgbPfCore *core, const uint8_t mac_dst[], uint32_t *bitmap);
 #endif
