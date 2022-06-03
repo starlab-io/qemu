@@ -63,7 +63,73 @@ igbx_reset_mac_addr(NICState *nic, uint32_t *mac_regs, uint8_t *mac_addr)
     trace_igb_mac_indicate(MAC_ARG(mac_addr));
 }
 
+bool
+igb_pf_promisc(IgbPfCore *core)
+{
+    return !!(core->mac[RCTL] & IGB_RCTL_UPE);
+}
 
+void
+igb_pf_mac_check(IgbPfCore *core, const uint8_t mac_dst[ETH_ALEN], uint32_t *bitmap)
+{
+#define LOOKUP(idx)  case idx:  { ral = core->mac[RAL##idx]; rah = core->mac[RAH##idx]; } break;
+
+    *bitmap=0;
+    for(unsigned idx=0; idx<24; ++idx) {
+        uint32_t ral, rah;
+        switch(idx) {
+            LOOKUP(0)
+            LOOKUP(1)
+            LOOKUP(2)
+            LOOKUP(3)
+            LOOKUP(4)
+            LOOKUP(5)
+            LOOKUP(6)
+            LOOKUP(7)
+            LOOKUP(8)
+            LOOKUP(9)
+            LOOKUP(10)
+            LOOKUP(11)
+            LOOKUP(12)
+            LOOKUP(13)
+            LOOKUP(14)
+            LOOKUP(15)
+            LOOKUP(16)
+            LOOKUP(17)
+            LOOKUP(18)
+            LOOKUP(19)
+            LOOKUP(20)
+            LOOKUP(21)
+            LOOKUP(22)
+            LOOKUP(23)
+        default:
+            abort();
+        }
+#undef LOOKUP
+        uint8_t mac_local[ETH_ALEN] = {};
+
+        // looks funny but matches QEMU ordering of MAC addresses...
+        mac_local[5] = (rah >>  8) & 0xff;
+        mac_local[4] = (rah >>  0) & 0xff;
+        mac_local[3] = (ral >> 24) & 0xff;
+        mac_local[2] = (ral >> 16) & 0xff;
+        mac_local[1] = (ral >>  8) & 0xff;
+        mac_local[0] = (ral >>  0) & 0xff;
+
+        const uint32_t pool_bitmap = IGB_RAH_POOL_EXTRACT(rah);
+
+        if ( ! (rah & IGB_RAH_AV)) {
+            continue;
+        }
+
+        if ( IGB_RAH_ASEL_EXTRACT(rah) != 0) {
+            continue;
+        }
+        if (!memcmp(mac_local, mac_dst, ETH_ALEN)) {
+            *bitmap |= pool_bitmap;
+        }
+    }
+}
 
 static void
 igb_pf_set_ctrl(IgbPfCore *core, int index, uint32_t val)

@@ -301,17 +301,29 @@ void igb_broadcast_pkt(igb_send_context_t *context, const struct iovec *iov,
     IgbPfCore *pf_core = context->core;
     const int source   = context->source;
     const bool has_vnet = (source == IGB_SOURCE_QEMU) ? pf_core->has_vnet : false;
+    uint8_t mac_dst[ETH_ALEN]= {};
+    iov_to_buf(iov, iovcnt, 0, mac_dst, sizeof(mac_dst));
+    const bool bcast = !!(mac_dst[0] & 1);
+    uint32_t bitmap=0;
+    igb_pf_mac_check(pf_core, mac_dst, &bitmap);
 
     /* Send to PF: */
     if (source != IGB_SOURCE_PF) {
-        igb_pf_receive_iov(pf_core, iov, iovcnt, has_vnet);
+        const uint32_t pf_bit = BIT(igb_get_vf_count(pf_core));
+        if (igb_pf_promisc(pf_core) || bcast || (pf_bit & bitmap)) {
+            igb_pf_receive_iov(pf_core, iov, iovcnt, has_vnet);
+        }
     }
 
     /* Send to VF: */
     for (unsigned vf = 0; vf < igb_get_vf_count(pf_core); ++vf) {
         if (pf_core->mac[VFRE] & BIT(vf) && source != vf) {
-            IgbVfCore *vf_core = igb_get_vf_core(pf_core, vf);
-            igb_vf_receive_iov(vf_core, iov, iovcnt, has_vnet);
+
+            const uint32_t vf_bit = BIT(vf);
+            if (bcast || (vf_bit & bitmap)) {
+                IgbVfCore *vf_core = igb_get_vf_core(pf_core, vf);
+                igb_vf_receive_iov(vf_core, iov, iovcnt, has_vnet);
+            }
         }
     }
 
@@ -328,7 +340,9 @@ void igb_broadcast_pkt(igb_send_context_t *context, const struct iovec *iov,
         iov2[0].iov_base = &hdr;
         iov2[0].iov_len  = pf_core->has_vnet ? sizeof(hdr) : 0;
 
-        qemu_sendv_packet(nc, iov2, iov2cnt);
+        if (bcast || !bitmap) {
+            qemu_sendv_packet(nc, iov2, iov2cnt);
+        }
     }
 }
 

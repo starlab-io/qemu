@@ -231,6 +231,7 @@
 
 /* Receive Control */
 #define IGB_RCTL_EN             0x00000002    /* enable */
+#define IGB_RCTL_UPE            BIT(3)       /* Unicast Promiscuous */
 #define IGB_RCTL_SZ_2048        0x00000000    /* rx buffer size 1024 */
 #define IGB_RCTL_SZ_1024        0x00010000    /* rx buffer size 1024 */
 #define IGB_RCTL_SZ_512         0x00020000    /* rx buffer size 512 */
@@ -293,6 +294,8 @@
  * manageability enabled, allowing us room for 15 multicast addresses.
  */
 #define IGB_RAH_AV  0x80000000        /* Receive descriptor valid */
+#define IGB_RAH_ASEL_EXTRACT(v)  (((v)>>16) &  0x3 )
+#define IGB_RAH_POOL_EXTRACT(v)  (((v)>>18) & 0xff )
 
 /* PHY Control Register */
 #define MII_CR_SPEED_SELECT_MSB 0x0040 /* bits 6,13: 10=1000, 01=100, 00=10 */
